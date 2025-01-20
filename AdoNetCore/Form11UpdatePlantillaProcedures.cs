@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Data.SqlClient;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 #region STORED PROCEDURES
 //create procedure SP_ALL_HOSPITALES
@@ -37,6 +38,16 @@ using Microsoft.Data.SqlClient;
 //		where HOSPITAL_COD = @hospitalcod
 //	end
 //go
+
+//alter procedure SP_UPDATEPLANTILLA_HOSPITAL
+//(@nombre nvarchar(50), @incremento int)
+//as
+//	declare @hospitalcod int
+//	select @hospitalcod = HOSPITAL_COD from HOSPITAL
+//	where NOMBRE = @nombre
+//	update PLANTILLA set SALARIO = SALARIO + @incremento
+//	where HOSPITAL_COD = @hospitalcod
+//go
 #endregion
 
 namespace AdoNetCore
@@ -60,14 +71,12 @@ namespace AdoNetCore
         public async void LoadHospitales()
         {
             string sql = "SP_ALL_HOSPITALES";
-            this.com.CommandType = CommandType.Text;
+            this.com.CommandType = CommandType.StoredProcedure;
             this.com.CommandText = sql;
-
             await this.cn.OpenAsync();
             this.reader = await this.com.ExecuteReaderAsync();
-
-            this.lstPlantilla.Items.Clear();
-            while(await this.reader.ReadAsync())
+            this.cmbHospital.Items.Clear();
+            while (await this.reader.ReadAsync())
             {
                 string nombre = this.reader["NOMBRE"].ToString();
                 this.cmbHospital.Items.Add(nombre);
@@ -81,18 +90,29 @@ namespace AdoNetCore
             string nombre = this.cmbHospital.SelectedItem.ToString();
             int incremento = int.Parse(this.txtIncremento.Text);
             string sql = "SP_UPDATEPLANTILLA_HOSPITAL";
-
             this.com.Parameters.AddWithValue("@nombre", nombre);
             this.com.Parameters.AddWithValue("@incremento", incremento);
-
             this.com.CommandType = CommandType.StoredProcedure;
             this.com.CommandText = sql;
+            await this.cn.OpenAsync();
+            int afectados = await this.com.ExecuteNonQueryAsync();
+            await this.cn.CloseAsync();
+            this.com.Parameters.Clear();
+            await this.LoadPlantilla(nombre);
+            MessageBox.Show("Registros modificados " + afectados);
+        }
 
+        public async Task LoadPlantilla(string nombre)
+        {
+
+            string sql = "SP_GETPLANTILLA_HOSPITAL";
+            this.com.Parameters.AddWithValue("@nombre", nombre);
+            this.com.CommandType = CommandType.StoredProcedure;
+            this.com.CommandText = sql;
             await this.cn.OpenAsync();
             this.reader = await this.com.ExecuteReaderAsync();
-
             this.lstPlantilla.Items.Clear();
-            while(await this.reader.ReadAsync())
+            while (await this.reader.ReadAsync())
             {
                 string apellido = this.reader["APELLIDO"].ToString();
                 string salario = this.reader["SALARIO"].ToString();
@@ -101,6 +121,16 @@ namespace AdoNetCore
             await this.reader.CloseAsync();
             await this.cn.CloseAsync();
             this.com.Parameters.Clear();
+        }
+
+        private async void cmbHospital_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (this.cmbHospital.SelectedIndex != -1)
+            {
+                string nombre =
+                    this.cmbHospital.SelectedItem.ToString();
+                await this.LoadPlantilla(nombre);
+            }
         }
     }
 }

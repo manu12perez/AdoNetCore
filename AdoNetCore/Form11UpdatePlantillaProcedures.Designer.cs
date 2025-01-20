@@ -53,6 +53,7 @@
             cmbHospital.Name = "cmbHospital";
             cmbHospital.Size = new Size(245, 28);
             cmbHospital.TabIndex = 1;
+            cmbHospital.SelectedIndexChanged += cmbHospital_SelectedIndexChanged;
             // 
             // btnModificarSalarios
             // 
