@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using AdoNetCore.Repositories;
 using Microsoft.Data.SqlClient;
 
 
@@ -38,37 +39,24 @@ namespace AdoNetCore
 {
     public partial class Form13ParametrosSalida : Form
     {
-        SqlConnection cn;
-        SqlCommand com;
-        SqlDataReader reader;
+        RepositoryParametrosOut repo;
 
         public Form13ParametrosSalida()
         {
             InitializeComponent();
-            string connectionString = @"Data Source=LOCALHOST\SQLEXPRESS;Initial Catalog=HOSPITAL;Persist Security Info=True;User ID=sa;Trust Server Certificate=True";
-            this.cn = new SqlConnection(connectionString);
-            this.com = new SqlCommand();
-            this.com.Connection = this.cn;
+            this.repo = new RepositoryParametrosOut();
             this.LoadDepartamentos();
         }
 
         public async Task LoadDepartamentos()
         {
-            string sql = "SP_ALL_DEPARTAMENTOS";
-            this.com.CommandType = CommandType.StoredProcedure;
-            this.com.CommandText = sql;
-
-            await this.cn.OpenAsync();
-            this.reader = await this.com.ExecuteReaderAsync();
-
+            List<string> departamentos = await this.repo.GetNombreDepartamentos();
             this.cmbDepartamentos.Items.Clear();
-            while (await this.reader.ReadAsync())
+            
+            foreach (string departamento in departamentos)
             {
-                string nombre = this.reader["DNOMBRE"].ToString();
-                this.cmbDepartamentos.Items.Add(nombre);
+                this.cmbDepartamentos.Items.Add(departamento);
             }
-            await this.reader.CloseAsync();
-            await this.cn.CloseAsync();
         }
 
         private async void btnMostrarDatos_Click(object sender, EventArgs e)
@@ -76,6 +64,25 @@ namespace AdoNetCore
             string sql = "SP_EMPLEADOS_DEPT_OUT";
             string nombre = this.cmbDepartamentos.SelectedItem.ToString();
 
+            var (empleados, suma, media, personas) = await this.repo.GetEmpleadosDepartamento(nombre);
+
+            // Limpiar y llenar la lista de empleados
+            this.lstEmpleados.Items.Clear();
+            foreach (string empleado in empleados)
+            {
+                this.lstEmpleados.Items.Add(empleado);
+            }
+
+            // Mostrar los valores de los parámetros de salida
+            this.txtSumaSalarial.Text = suma.ToString();
+            this.txtMediaSalarial.Text = media.ToString();
+            this.txtPersonas.Text = personas.ToString();
+        }
+    }
+}
+
+
+/*
             //PARA LOS PARAMETROS DE ENTRADA PODEMOS UTILIZAR
             //AddWithValue SIN PROBLEMAS
             //PARA LOS PARAMETROS DE SALIDA ES IMPRESCINDIBLE
@@ -122,6 +129,4 @@ namespace AdoNetCore
             
             await this.cn.CloseAsync();
             this.com.Parameters.Clear();
-        }
-    }
-}
+ */
